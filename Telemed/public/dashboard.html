@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 0;
+        }
+        .dashboard-container {
+            width: 80%;
+            margin: 50px auto;
+            background-color: white;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+        }
+        h2 {
+            text-align: center;
+            color: #25b09b;
+        }
+        p {
+            text-align: center;
+        }
+        .menu {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 30px;
+        }
+        .menu-item {
+            background-color: #25b09b;
+            color: white;
+            padding: 15px 30px;
+            border-radius: 5px;
+            text-align: center;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .menu-item:hover {
+            background-color: #1f8c82;
+        }
+        a {
+            color: white;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="dashboard-container">
+        <h2>Welcome to Your Dashboard</h2>
+        <p>Here, you can manage your appointments, update your profile, and more.</p>
+
+        <div class="menu">
+            <div class="menu-item">
+                <a href="/profile.html">View Profile</a>
+            </div>
+            <div class="menu-item">
+                <a href="/appointment.html">Manage Appointments</a>
+            </div>
+            <div class="menu-item">
+                <a href="/logout">Logout</a>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>
