@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doctor Dashboard</title>
+    
+</head>
+<body>
+    <h2>Welcome, <span id="doctorName"></span></h2>
+    <h3>Your Schedules</h3>
+    <ul id="scheduleList"></ul>
+
+    <a href="/doctor-logout">Logout</a>
+    <script>
+        // Fetch Doctor Dashboard Data
+            window.addEventListener('load', async () => {
+                if (window.location.pathname.includes('doctor_dashboard.html')) {
+                    const response = await fetch('/doctor/dashboard');
+                    const { doctor, schedules } = await response.json();
+
+                    if (doctor) {
+                        document.getElementById('doctorName').textContent = `${doctor.first_name} ${doctor.last_name}`;
+                    }
+
+                    const scheduleList = document.getElementById('scheduleList');
+                    schedules.forEach((schedule) => {
+                        const li = document.createElement('li');
+                        li.textContent = `${schedule.schedule_date} (${schedule.start_time} - ${schedule.end_time})`;
+                        scheduleList.appendChild(li);
+                    });
+                }
+            });
+    </script>
+</body>
+</html>

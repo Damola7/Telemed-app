@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doctor Registration</title>
+</head>
+<body>
+    <h2>Doctor Registration</h2>
+    <form id="doctorRegisterForm">
+        <label for="first_name">First Name:</label>
+        <input type="text" id="first_name" name="first_name" required><br>
+
+        <label for="last_name">Last Name:</label>
+        <input type="text" id="last_name" name="last_name" required><br>
+
+        <label for="email">Email:</label>
+        <input type="email" id="email" name="email" required><br>
+
+        <label for="password">Password:</label>
+        <input type="password" id="password" name="password" required><br>
+
+        <label for="phone">Phone:</label>
+        <input type="text" id="phone" name="phone"><br>
+
+        <label for="specialization">Specialization:</label>
+        <input type="text" id="specialization" name="specialization" required><br>
+
+        <button type="submit">Register</button>
+    </form>
+    <script>
+        // Handle Doctor Registration
+            document.getElementById('doctorRegisterForm')?.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+    
+                const data = Object.fromEntries(formData.entries());
+    
+                const response = await fetch('/doctor/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data),
+                });
+    
+                const result = await response.json();
+                alert(result.message || result.error);
+                if (response.ok) {
+                    window.location.href = 'doctor_login.html';
+                }
+            });
+    </script>
+</body>
+</html>
+

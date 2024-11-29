@@ -190,33 +190,125 @@ router.get('/doctors', (req, res) => {
     });
 });
 
-// Add a new doctor
-router.post('/register-doctor', async (req, res) => {
-    const { first_name, last_name, specialization, email, phone, password } = req.body;
+// Doctor Registration
+router.post('/doctor/register', async (req, res) => {
+    const { first_name, last_name, email, password, phone, specialization } = req.body;
 
     try {
-        // Hash the password
-        const password_hash = await bcrypt.hash(password, 10);
-
-        // SQL Query to insert data
-        const sql = `
-            INSERT INTO doctors (first_name, last_name, specialization, email, phone, password_hash, created_at) 
-            VALUES (?, ?, ?, ?, ?, ?, NOW());
-        `;
-        const values = [first_name, last_name, specialization, email, phone, password_hash];
-
-        // Execute the query
-        db.query(sql, values, (err, result) => {
+        // Check if the doctor already exists
+        connection.query('SELECT * FROM doctors WHERE email = ?', [email], async (err, results) => {
             if (err) {
-                console.error('Error inserting doctor:', err);
-                return res.status(500).send('Registration failed. Try again later.');
+                console.error('Database query failed:', err);
+                return res.status(500).json({ error: 'Database error' });
             }
-            res.send('Doctor registered successfully!');
+
+            if (results.length > 0) {
+                return res.status(400).json({ error: 'Email already registered' });
+            }
+
+            // Hash the password
+            const passwordHash = await bcrypt.hash(password, 10);
+
+            // Insert new doctor into the database
+            connection.query(
+                'INSERT INTO doctors (first_name, last_name, email, password_hash, phone, specialization, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())',
+                [first_name, last_name, email, passwordHash, phone, specialization],
+                (err) => {
+                    if (err) {
+                        console.error('Database insertion failed:', err);
+                        return res.status(500).json({ error: 'Failed to register doctor' });
+                    }
+                    res.status(201).json({ message: 'Doctor registered successfully' });
+                }
+            );
         });
     } catch (error) {
-        console.error('Error hashing password:', error);
-        res.status(500).send('An error occurred. Try again later.');
+        console.error(error);
+        res.status(500).json({ error: 'Unexpected error occurred' });
     }
+});
+
+// Doctor Login
+router.post('/doctor/login', async (req, res) => {
+    const { email, password } = req.body;
+
+    try {
+        // Check if the doctor exists
+        connection.query('SELECT * FROM doctors WHERE email = ?', [email], async (err, results) => {
+            if (err) {
+                console.error('Database query failed:', err);
+                return res.status(500).json({ error: 'Database error' });
+            }
+
+            if (results.length === 0) {
+                return res.status(400).json({ error: 'Invalid email or password' });
+            }
+
+            const doctor = results[0];
+
+            // Compare the password with the stored hash
+            const isMatch = await bcrypt.compare(password, doctor.password_hash);
+            if (!isMatch) {
+                return res.status(400).json({ error: 'Invalid email or password' });
+            }
+
+            // Set session data
+            req.session.doctorId = doctor.id;
+            res.status(200).json({ message: 'Login successful' });
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Unexpected error occurred' });
+    }
+});
+
+// Doctor Dashboard
+router.get('/doctor/dashboard', async (req, res) => {
+    if (!req.session.doctorId) {
+        return res.status(401).json({ error: 'Unauthorized. Please log in as a doctor.' });
+    }
+
+    try {
+        // Fetch doctor profile and schedule
+        connection.query('SELECT first_name, last_name, email, phone, specialization FROM doctors WHERE id = ?', [req.session.doctorId], (err, doctorResults) => {
+            if (err) {
+                console.error('Database query failed:', err);
+                return res.status(500).json({ error: 'Database error' });
+            }
+
+            if (doctorResults.length === 0) {
+                return res.status(404).json({ error: 'Doctor not found' });
+            }
+
+            const doctor = doctorResults[0];
+
+            connection.query('SELECT id, schedule_date, start_time, end_time FROM schedules WHERE doctor_id = ?', [req.session.doctorId], (err, scheduleResults) => {
+                if (err) {
+                    console.error('Database query failed:', err);
+                    return res.status(500).json({ error: 'Database error' });
+                }
+
+                res.status(200).json({ doctor, schedules: scheduleResults });
+            });
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Unexpected error occurred' });
+    }
+});
+
+// Logout route
+router.get('/doctor-logout', (req, res) => {
+    // Destroy the session
+    req.session.destroy((err) => {
+        if (err) {
+            console.error('Error during logout:', err); // Log any error that happens during session destruction
+            return res.status(500).send('Error during logout');
+        }
+
+        // Redirect to login page after successful logout
+        res.redirect('/doctor_login.html');
+    });
 });
 
 // Get all appointments
@@ -262,8 +354,6 @@ router.post('/admin/register', (req, res) => {
         });
     });
 });
-
-
 
 // Admin Login Route
 router.post('/admin/login', (req, res) => {
