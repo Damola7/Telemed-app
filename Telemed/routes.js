@@ -110,62 +110,6 @@ router.put('/profile', (req, res) => {
     );
 });
 
-// Book an appointment
-router.post('/appointments', (req, res) => {
-    const { doctor_id, appointment_date, appointment_time } = req.body;
-    const patientId = req.session.patientId;
-
-    if (!patientId) {
-        return res.status(401).send('Unauthorized'); // Not logged in
-    }
-
-    connection.query(
-        'INSERT INTO Appointments (patient_id, doctor_id, appointment_date, appointment_time, status) VALUES (?, ?, ?, ?, ?)',
-        [patientId, doctor_id, appointment_date, appointment_time, 'scheduled'],
-        (err, result) => { // Capture result to get the inserted ID
-            if (err) {
-                return res.status(500).send('Error booking appointment');
-            }
-            const appointmentId = result.insertId; // Get the inserted ID
-            res.status(201).json({ message: 'Appointment booked successfully', appointmentId }); // Send back ID
-        }
-    );
-});
-
-// Reschedule an appointment
-router.put('/appointments/:id', (req, res) => {
-    const appointmentId = req.params.id;
-    const { appointment_date, appointment_time } = req.body;
-    
-    connection.query(
-        'UPDATE Appointments SET appointment_date = ?, appointment_time = ? WHERE id = ?',
-        [appointment_date, appointment_time, appointmentId],
-        (err) => {
-            if (err) {
-                return res.status(500).send('Error rescheduling appointment');
-            }
-            res.send('Appointment rescheduled successfully');
-        }
-    );
-});
-
-// Cancel an appointment
-router.delete('/appointments/:id', (req, res) => {
-    const appointmentId = req.params.id;
-
-    connection.query(
-        'UPDATE Appointments SET status = "canceled" WHERE id = ?',
-        [appointmentId],
-        (err) => {
-            if (err) {
-                return res.status(500).send('Error canceling appointment');
-            }
-            res.send('Appointment canceled successfully');
-        }
-    );
-});
-
-
 // Logout route
 router.get('/logout', (req, res) => {
     // Destroy the session
@@ -262,6 +206,33 @@ router.post('/doctor/login', async (req, res) => {
     }
 });
 
+// Add Doctor Schedule with Day Range
+router.post('/doctor/schedule', async (req, res) => {
+    if (!req.session.doctorId) {
+        return res.status(401).json({ error: 'Unauthorized. Please log in as a doctor.' });
+    }
+
+    const { day_range, start_time, end_time } = req.body;
+
+    try {
+        // Insert schedule into the database
+        connection.query(
+            'INSERT INTO schedules (doctor_id, day_range, start_time, end_time) VALUES (?, ?, ?, ?)',
+            [req.session.doctorId, day_range, start_time, end_time],
+            (err, result) => {
+                if (err) {
+                    console.error('Database insertion failed:', err);
+                    return res.status(500).json({ error: 'Failed to add schedule' });
+                }
+                res.status(201).json({ message: 'Schedule added successfully' });
+            }
+        );
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Unexpected error occurred' });
+    }
+});
+
 // Doctor Dashboard
 router.get('/doctor/dashboard', async (req, res) => {
     if (!req.session.doctorId) {
@@ -282,7 +253,7 @@ router.get('/doctor/dashboard', async (req, res) => {
 
             const doctor = doctorResults[0];
 
-            connection.query('SELECT id, schedule_date, start_time, end_time FROM schedules WHERE doctor_id = ?', [req.session.doctorId], (err, scheduleResults) => {
+            connection.query('SELECT id, day_range, start_time, end_time FROM schedules WHERE doctor_id = ?', [req.session.doctorId], (err, scheduleResults) => {
                 if (err) {
                     console.error('Database query failed:', err);
                     return res.status(500).json({ error: 'Database error' });
