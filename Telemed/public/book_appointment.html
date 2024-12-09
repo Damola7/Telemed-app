@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book Appointment</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        h2 {
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            font-weight: bold;
+        }
+
+        select, input, button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        button {
+            background-color: #28a745;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #218838;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h2>Book an Appointment</h2>
+        <form id="appointment-form">
+            <div class="form-group">
+                <label for="doctor_id">Choose Doctor</label>
+                <select id="doctor_id" name="doctor_id" required>
+                    <!-- Populate dynamically -->
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="schedule_id">Choose Schedule</label>
+                <select id="schedule_id" name="schedule_id" required>
+                    <!-- Populate dynamically -->
+                </select>
+            </div>
+            <button type="submit">Book Appointment</button>
+        </form>
+        <p id="message" style="color: green; text-align: center; display: none;"></p>
+    </div>
+
+    <script>
+        const loadDoctorsAndSchedules = async () => {
+            try {
+                const response = await fetch('/appointments/doctors');
+                const { doctors } = await response.json();
+
+                const doctorSelect = document.getElementById('doctor_id');
+                doctorSelect.innerHTML = '<option value="">Select Doctor</option>';
+                doctors.forEach(doctor => {
+                    const option = document.createElement('option');
+                    option.value = doctor.id;
+                    option.textContent = `${doctor.first_name} ${doctor.last_name} - ${doctor.specialization}`;
+                    doctorSelect.appendChild(option);
+                });
+
+                doctorSelect.addEventListener('change', async (event) => {
+                    const doctorId = event.target.value;
+
+                    if (!doctorId) return;
+
+                    const scheduleResponse = await fetch(`/appointments/schedules/${doctorId}`);
+                    const { schedules } = await scheduleResponse.json();
+
+                    const scheduleSelect = document.getElementById('schedule_id');
+                    scheduleSelect.innerHTML = '<option value="">Select Schedule</option>';
+                    schedules.forEach(schedule => {
+                        const option = document.createElement('option');
+                        option.value = schedule.id;
+                        option.textContent = `${schedule.day_range} (${schedule.start_time} - ${schedule.end_time})`;
+                        scheduleSelect.appendChild(option);
+                    });
+                });
+            } catch (error) {
+                console.error('Error loading data:', error);
+            }
+        };
+
+        document.getElementById('appointment-form').addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const doctor_id = document.getElementById('doctor_id').value;
+            const schedule_id = document.getElementById('schedule_id').value;
+
+            try {
+                const response = await fetch('/appointments/book', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ doctor_id, schedule_id }),
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    document.getElementById('message').textContent = result.message;
+                    document.getElementById('message').style.display = 'block';
+                } else {
+                    alert(result.error || 'Booking failed.');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An unexpected error occurred.');
+            }
+        });
+
+        loadDoctorsAndSchedules();
+    </script>
+</body>
+
+</html>

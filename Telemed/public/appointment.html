@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Appointments</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px;
+            background-color: #5cb85c;
+            color: white;
+        }
+
+        header h1 {
+            margin: 0;
+        }
+
+        header button {
+            padding: 10px 15px;
+            background-color: white;
+            color: #5cb85c;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        header button:hover {
+            background-color: #4cae4c;
+            color: white;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        table, th, td {
+            border: 1px solid #ccc;
+        }
+
+        th, td {
+            padding: 10px;
+            text-align: left;
+        }
+
+        button {
+            padding: 5px 10px;
+            color: white;
+            background-color: red;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: darkred;
+        }
+
+        #message {
+            text-align: center;
+            color: green;
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>My Appointments</h1>
+        <button onclick="window.location.href='/book_appointment.html';">Book Appointment</button>
+    </header>
+    <table>
+        <thead>
+            <tr>
+                <th>Doctor</th>
+                <th>Schedule</th>
+                <th>Status</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="appointments-table">
+            <!-- Appointments will be loaded dynamically -->
+        </tbody>
+    </table>
+    <p id="message"></p>
+
+    <script>
+        const loadAppointments = async () => {
+            try {
+                const response = await fetch('/appointments/mine');
+                const { appointments } = await response.json();
+
+                const table = document.getElementById('appointments-table');
+                table.innerHTML = '';
+
+                appointments.forEach(appointment => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${appointment.doctor_name}</td>
+                        <td>${appointment.schedule}</td>
+                        <td>${appointment.status}</td>
+                        <td>
+                            ${
+                                appointment.status === 'Pending'
+                                    ? `<button onclick="cancelAppointment(${appointment.id})">Cancel</button>`
+                                    : 'N/A'
+                            }
+                        </td>
+                    `;
+                    table.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Error loading appointments:', error);
+            }
+        };
+
+        const cancelAppointment = async (appointmentId) => {
+            try {
+                const response = await fetch('/appointments/cancel', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ appointment_id: appointmentId }),
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    document.getElementById('message').textContent = result.message;
+                    document.getElementById('message').style.display = 'block';
+                    loadAppointments();
+                } else {
+                    alert(result.error || 'Failed to cancel appointment.');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An unexpected error occurred.');
+            }
+        };
+
+        loadAppointments();
+    </script>
+</body>
+
+</html>

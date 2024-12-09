@@ -4,51 +4,45 @@ const connection = require('./db'); // Import the database connection
 const bcrypt = require('bcryptjs'); // Import bcrypt
 
 // Get all patients
-router.get('/patients', (req, res) => {
-    connection.query('SELECT * FROM Patients', (err, results) => {
-        if (err) {
-            return res.status(500).send('Error retrieving patients');
-        }
+router.get('/patients', async (req, res) => {
+    try {
+        const [results] = await connection.query('SELECT * FROM Patients');
         res.json(results);
-    });
+    } catch (err) {
+        res.status(500).send('Error retrieving patients');
+    }
 });
+
 
 // Add a new patient (Registration)
-router.post('/patients', (req, res) => {
+router.post('/patients', async (req, res) => {
     const { first_name, last_name, email, password, phone, date_of_birth, gender, address } = req.body;
 
-
-    // Hash the password
-    bcrypt.hash(password, 10, (err, hashedPassword) => {
-        if (err) {
-            console.error('Error during hashing:', err); // Debug hashing error
-            return res.status(500).send('Error hashing password');
-        }
+    try {
+        // Hash the password
+        const hashedPassword = await bcrypt.hash(password, 10);
 
         // Insert into the database
-        connection.query(
+        await connection.query(
             'INSERT INTO Patients (first_name, last_name, email, password_hash, phone, date_of_birth, gender, address) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-            [first_name, last_name, email, hashedPassword, phone, date_of_birth, gender, address],
-            (err) => {
-                if (err) {
-                    console.error('Error adding patient:', err); // Debug database error
-                    return res.status(500).send('Error adding patient');
-                }
-                res.status(201).send('Patient added successfully');
-            }
+            [first_name, last_name, email, hashedPassword, phone, date_of_birth, gender, address]
         );
-    });
+
+        res.status(201).send('Patient added successfully');
+    } catch (err) {
+        console.error('Error during registration:', err); // Debug error
+        res.status(500).send('Error adding patient');
+    }
 });
 
+
 // Patient login
-router.post('/login', (req, res) => {
+router.post('/login', async (req, res) => {
     const { email, password } = req.body;
 
-    // Check if the email exists
-    connection.query('SELECT * FROM Patients WHERE email = ?', [email], (err, results) => {
-        if (err) {
-            return res.status(500).send('Error retrieving patient');
-        }
+    try {
+        // Check if the email exists
+        const [results] = await connection.query('SELECT * FROM Patients WHERE email = ?', [email]);
 
         if (results.length === 0) {
             return res.status(404).send('Invalid email or password');
@@ -56,40 +50,47 @@ router.post('/login', (req, res) => {
 
         // Compare the provided password with the stored hashed password
         const patient = results[0];
-        bcrypt.compare(password, patient.password_hash, (err, isMatch) => {
-            if (err) {
-                return res.status(500).send('Error during password comparison');
-            }
+        const isMatch = await bcrypt.compare(password, patient.password_hash);
 
-            if (!isMatch) {
-                return res.status(404).send('Invalid email or password');
-            }
+        if (!isMatch) {
+            return res.status(404).send('Invalid email or password');
+        }
 
-            // Successful login
-            req.session.patientId = patient.id; // Store the patient ID in the session
-            res.redirect('/dashboard.html');
-        });
-    });
+        // Successful login
+        req.session.patientId = patient.id; // Store the patient ID in the session
+        res.redirect('/dashboard.html');
+    } catch (err) {
+        console.error('Error during login:', err); // Debug error
+        res.status(500).send('Error during login');
+    }
 });
 
+
 // Get patient profile (view profile)
-router.get('/profile', (req, res) => {
+router.get('/profile', async (req, res) => {
     const patientId = req.session.patientId; // Get patient ID from session
     if (!patientId) {
         return res.status(401).send('Unauthorized'); // Not logged in
     }
 
-    // Query to fetch patient details
-    connection.query('SELECT first_name, last_name, phone, date_of_birth, gender, address FROM Patients WHERE id = ?', [patientId], (err, results) => {
-        if (err) {
-            return res.status(500).send('Error retrieving patient profile');
+    try {
+        // Query to fetch patient details
+        const [results] = await connection.query('SELECT first_name, last_name, phone, date_of_birth, gender, address FROM Patients WHERE id = ?', [patientId]);
+
+        if (results.length === 0) {
+            return res.status(404).send('Patient not found');
         }
+
         res.json(results[0]); // Send back the patient profile
-    });
+    } catch (err) {
+        console.error('Error retrieving patient profile:', err); // Debug error
+        res.status(500).send('Error retrieving patient profile');
+    }
 });
 
+
 // Update patient profile
-router.put('/profile', (req, res) => {
+router.put('/profile', async (req, res) => {
     const patientId = req.session.patientId; // Get patient ID from session
     if (!patientId) {
         return res.status(401).send('Unauthorized'); // Not logged in
@@ -97,17 +98,128 @@ router.put('/profile', (req, res) => {
 
     const { first_name, last_name, phone, date_of_birth, gender, address } = req.body;
 
-    // Query to update patient details
-    connection.query(
-        'UPDATE Patients SET first_name = ?, last_name = ?, phone = ?, date_of_birth = ?, gender = ?, address = ? WHERE id = ?',
-        [first_name, last_name, phone, date_of_birth, gender, address, patientId],
-        (err) => {
-            if (err) {
-                return res.status(500).send('Error updating patient profile');
-            }
-            res.send('Profile updated successfully');
+    try {
+        // Query to update patient details
+        await connection.query(
+            'UPDATE Patients SET first_name = ?, last_name = ?, phone = ?, date_of_birth = ?, gender = ?, address = ? WHERE id = ?',
+            [first_name, last_name, phone, date_of_birth, gender, address, patientId]
+        );
+
+        res.send('Profile updated successfully');
+    } catch (err) {
+        console.error('Error updating patient profile:', err); // Debug error
+        res.status(500).send('Error updating patient profile');
+    }
+});
+
+
+// Fetch logged-in patient's appointments
+router.get('/appointments/mine', async (req, res) => {
+    if (!req.session.patientId) {
+        return res.status(401).json({ error: 'Unauthorized. Please log in.' });
+    }
+
+    try {
+        const [appointments] = await connection.query(
+            `SELECT 
+                a.id, 
+                CONCAT(d.first_name, ' ', d.last_name) AS doctor_name,
+                CONCAT(s.day_range, ' (', s.start_time, ' - ', s.end_time, ')') AS schedule,
+                a.status
+            FROM appointments a
+            JOIN doctors d ON a.doctor_id = d.id
+            JOIN schedules s ON a.schedule_id = s.id
+            WHERE a.patient_id = ?
+            ORDER BY a.created_at DESC`,
+            [req.session.patientId]
+        );
+
+        res.status(200).json({ appointments });
+    } catch (error) {
+        console.error('Error fetching appointments:', error);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+
+// Fetch all doctors
+router.get('/appointments/doctors', async (req, res) => {
+    try {
+        const [doctors] = await connection.query(
+            'SELECT id, first_name, last_name, specialization FROM doctors'
+        );
+        res.status(200).json({ doctors });
+    } catch (error) {
+        console.error('Error fetching doctors:', error);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+// Fetch schedules for a doctor
+router.get('/appointments/schedules/:doctorId', async (req, res) => {
+    const { doctorId } = req.params;
+    try {
+        const [schedules] = await connection.query(
+            'SELECT id, day_range, start_time, end_time FROM schedules WHERE doctor_id = ?',
+            [doctorId]
+        );
+        res.status(200).json({ schedules });
+    } catch (error) {
+        console.error('Error fetching schedules:', error);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+// Book an appointment
+router.post('/appointments/book', async (req, res) => {
+    const { doctor_id, schedule_id } = req.body;
+
+    if (!req.session.patientId) {
+        return res.status(401).json({ error: 'Unauthorized. Please log in.' });
+    }
+
+    try {
+        await connection.query(
+            'INSERT INTO appointments (patient_id, doctor_id, schedule_id, status) VALUES (?, ?, ?, ?)',
+            [req.session.patientId, doctor_id, schedule_id, 'Pending']
+        );
+        res.status(201).json({ message: 'Appointment booked successfully.' });
+    } catch (error) {
+        console.error('Error booking appointment:', error);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+// Cancel an appointment
+router.post('/appointments/cancel', async (req, res) => {
+    const { appointment_id } = req.body;
+
+    if (!req.session.patientId) {
+        return res.status(401).json({ error: 'Unauthorized. Please log in.' });
+    }
+
+    try {
+        // Verify the appointment belongs to the logged-in patient
+        const [result] = await connection.query(
+            'SELECT id FROM appointments WHERE id = ? AND patient_id = ?',
+            [appointment_id, req.session.patientId]
+        );
+
+        if (result.length === 0) {
+            return res.status(404).json({ error: 'Appointment not found or not authorized to cancel.' });
         }
-    );
+
+        // Update appointment status to 'Cancelled'
+        await connection.query(
+            'UPDATE appointments SET status = ? WHERE id = ?',
+            ['Cancelled', appointment_id]
+        );
+
+        res.status(200).json({ message: 'Appointment cancelled successfully.' });
+    } catch (error) {
+        console.error('Error cancelling appointment:', error);
+        res.status(500).json({ error: 'Database error' });
+    }
 });
 
 // Logout route
@@ -125,14 +237,17 @@ router.get('/logout', (req, res) => {
 });
 
 // Get all doctors
-router.get('/doctors', (req, res) => {
-    connection.query('SELECT * FROM Doctors', (err, results) => {
-        if (err) {
-            return res.status(500).send('Error retrieving doctors');
-        }
+router.get('/doctors', async (req, res) => {
+    try {
+        // Query to get all doctors
+        const [results] = await connection.query('SELECT * FROM Doctors');
         res.json(results);
-    });
+    } catch (err) {
+        console.error('Error retrieving doctors:', err); // Log any error
+        res.status(500).send('Error retrieving doctors');
+    }
 });
+
 
 // Doctor Registration
 router.post('/doctor/register', async (req, res) => {
@@ -283,14 +398,17 @@ router.get('/doctor-logout', (req, res) => {
 });
 
 // Get all appointments
-router.get('/appointments', (req, res) => {
-    connection.query('SELECT * FROM Appointments', (err, results) => {
-        if (err) {
-            return res.status(500).send('Error retrieving appointments');
-        }
+router.get('/appointments', async (req, res) => {
+    try {
+        // Query to get all appointments
+        const [results] = await connection.query('SELECT * FROM Appointments');
         res.json(results);
-    });
+    } catch (err) {
+        console.error('Error retrieving appointments:', err); // Log any error
+        res.status(500).send('Error retrieving appointments');
+    }
 });
+
 
 // Admin Registration
 router.post('/admin/register', (req, res) => {
