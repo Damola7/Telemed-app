@@ -255,34 +255,27 @@ router.post('/doctor/register', async (req, res) => {
 
     try {
         // Check if the doctor already exists
-        connection.query('SELECT * FROM doctors WHERE email = ?', [email], async (err, results) => {
-            if (err) {
-                console.error('Database query failed:', err);
-                return res.status(500).json({ error: 'Database error' });
-            }
+        const [existingDoctors] = await connection.query(
+            'SELECT * FROM doctors WHERE email = ?',
+            [email]
+        );
 
-            if (results.length > 0) {
-                return res.status(400).json({ error: 'Email already registered' });
-            }
+        if (existingDoctors.length > 0) {
+            return res.status(400).json({ error: 'Email already registered' });
+        }
 
-            // Hash the password
-            const passwordHash = await bcrypt.hash(password, 10);
+        // Hash the password
+        const passwordHash = await bcrypt.hash(password, 10);
 
-            // Insert new doctor into the database
-            connection.query(
-                'INSERT INTO doctors (first_name, last_name, email, password_hash, phone, specialization, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())',
-                [first_name, last_name, email, passwordHash, phone, specialization],
-                (err) => {
-                    if (err) {
-                        console.error('Database insertion failed:', err);
-                        return res.status(500).json({ error: 'Failed to register doctor' });
-                    }
-                    res.status(201).json({ message: 'Doctor registered successfully' });
-                }
-            );
-        });
+        // Insert new doctor into the database
+        await connection.query(
+            'INSERT INTO doctors (first_name, last_name, email, password_hash, phone, specialization, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())',
+            [first_name, last_name, email, passwordHash, phone, specialization]
+        );
+
+        res.status(201).json({ message: 'Doctor registered successfully' });
     } catch (error) {
-        console.error(error);
+        console.error('Error during doctor registration:', error);
         res.status(500).json({ error: 'Unexpected error occurred' });
     }
 });
@@ -293,30 +286,25 @@ router.post('/doctor/login', async (req, res) => {
 
     try {
         // Check if the doctor exists
-        connection.query('SELECT * FROM doctors WHERE email = ?', [email], async (err, results) => {
-            if (err) {
-                console.error('Database query failed:', err);
-                return res.status(500).json({ error: 'Database error' });
-            }
+        const [doctors] = await connection.query('SELECT * FROM doctors WHERE email = ?', [email]);
 
-            if (results.length === 0) {
-                return res.status(400).json({ error: 'Invalid email or password' });
-            }
+        if (doctors.length === 0) {
+            return res.status(400).json({ error: 'Invalid email or password' });
+        }
 
-            const doctor = results[0];
+        const doctor = doctors[0];
 
-            // Compare the password with the stored hash
-            const isMatch = await bcrypt.compare(password, doctor.password_hash);
-            if (!isMatch) {
-                return res.status(400).json({ error: 'Invalid email or password' });
-            }
+        // Compare the password with the stored hash
+        const isMatch = await bcrypt.compare(password, doctor.password_hash);
+        if (!isMatch) {
+            return res.status(400).json({ error: 'Invalid email or password' });
+        }
 
-            // Set session data
-            req.session.doctorId = doctor.id;
-            res.status(200).json({ message: 'Login successful' });
-        });
+        // Set session data
+        req.session.doctorId = doctor.id;
+        res.status(200).json({ message: 'Login successful' });
     } catch (error) {
-        console.error(error);
+        console.error('Error during login:', error);
         res.status(500).json({ error: 'Unexpected error occurred' });
     }
 });
@@ -331,22 +319,18 @@ router.post('/doctor/schedule', async (req, res) => {
 
     try {
         // Insert schedule into the database
-        connection.query(
+        const [result] = await connection.query(
             'INSERT INTO schedules (doctor_id, day_range, start_time, end_time) VALUES (?, ?, ?, ?)',
-            [req.session.doctorId, day_range, start_time, end_time],
-            (err, result) => {
-                if (err) {
-                    console.error('Database insertion failed:', err);
-                    return res.status(500).json({ error: 'Failed to add schedule' });
-                }
-                res.status(201).json({ message: 'Schedule added successfully' });
-            }
+            [req.session.doctorId, day_range, start_time, end_time]
         );
+
+        res.status(201).json({ message: 'Schedule added successfully' });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Unexpected error occurred' });
+        console.error('Error during schedule insertion:', error);
+        res.status(500).json({ error: 'Failed to add schedule' });
     }
 });
+
 
 // Doctor Dashboard
 router.get('/doctor/dashboard', async (req, res) => {
@@ -355,30 +339,27 @@ router.get('/doctor/dashboard', async (req, res) => {
     }
 
     try {
-        // Fetch doctor profile and schedule
-        connection.query('SELECT first_name, last_name, email, phone, specialization FROM doctors WHERE id = ?', [req.session.doctorId], (err, doctorResults) => {
-            if (err) {
-                console.error('Database query failed:', err);
-                return res.status(500).json({ error: 'Database error' });
-            }
+        // Fetch doctor profile
+        const [doctorResults] = await connection.query(
+            'SELECT first_name, last_name, email, phone, specialization FROM doctors WHERE id = ?',
+            [req.session.doctorId]
+        );
 
-            if (doctorResults.length === 0) {
-                return res.status(404).json({ error: 'Doctor not found' });
-            }
+        if (doctorResults.length === 0) {
+            return res.status(404).json({ error: 'Doctor not found' });
+        }
 
-            const doctor = doctorResults[0];
+        const doctor = doctorResults[0];
 
-            connection.query('SELECT id, day_range, start_time, end_time FROM schedules WHERE doctor_id = ?', [req.session.doctorId], (err, scheduleResults) => {
-                if (err) {
-                    console.error('Database query failed:', err);
-                    return res.status(500).json({ error: 'Database error' });
-                }
+        // Fetch doctor schedule
+        const [scheduleResults] = await connection.query(
+            'SELECT id, day_range, start_time, end_time FROM schedules WHERE doctor_id = ?',
+            [req.session.doctorId]
+        );
 
-                res.status(200).json({ doctor, schedules: scheduleResults });
-            });
-        });
+        res.status(200).json({ doctor, schedules: scheduleResults });
     } catch (error) {
-        console.error(error);
+        console.error('Error during doctor dashboard:', error);
         res.status(500).json({ error: 'Unexpected error occurred' });
     }
 });
