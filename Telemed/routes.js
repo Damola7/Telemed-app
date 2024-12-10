@@ -364,6 +364,77 @@ router.get('/doctor/dashboard', async (req, res) => {
     }
 });
 
+// Route to view pending appointments for a specific doctor
+router.get('/doctor/appointments', async (req, res) => {
+    const doctorId = req.session.doctorId;
+
+    // SQL query to get pending appointments for the doctor
+    const query = `
+        SELECT a.id, a.status, p.first_name, p.last_name, p.email
+        FROM appointments a
+        JOIN patients p ON a.patient_id = p.id
+        WHERE a.doctor_id = ?
+    `;
+
+    try {
+        // Use the promise-based query method with the pool
+        const [results] = await connection.query(query, [doctorId]);
+
+        res.json(results); // Send appointments data as JSON
+    } catch (err) {
+        // Handle any errors that occur during the database query
+        return res.status(500).send('Error fetching appointments');
+    }
+});
+
+// Route to confirm an appointment
+router.post('/doctor/appointments/confirm/:appointmentId', async (req, res) => {
+    const appointmentId = req.params.appointmentId;
+
+    // SQL query to update the appointment status to 'Confirmed'
+    const query = 'UPDATE appointments SET status = ? WHERE id = ?';
+
+    try {
+        // Use the promise-based query method with the pool
+        const [result] = await connection.query(query, ['Confirmed', appointmentId]);
+
+        // If no rows were affected, the appointment might not exist
+        if (result.affectedRows === 0) {
+            return res.status(404).send('Appointment not found');
+        }
+
+        // Redirect back to the appointments page
+        res.redirect('/doctor_appointment.html');
+    } catch (err) {
+        // Handle any errors that occur during the database query
+        return res.status(500).send('Error confirming appointment');
+    }
+});
+
+// Route to mark an appointment as completed
+router.post('/doctor/appointments/complete/:appointmentId', async (req, res) => {
+    const appointmentId = req.params.appointmentId;
+
+    // SQL query to update the appointment status to 'Completed'
+    const query = 'UPDATE appointments SET status = ? WHERE id = ?';
+
+    try {
+        // Use the promise-based query method with the pool
+        const [result] = await connection.query(query, ['Completed', appointmentId]);
+
+        // If no rows were affected, the appointment might not exist
+        if (result.affectedRows === 0) {
+            return res.status(404).send('Appointment not found');
+        }
+
+        // Redirect back to the appointments page
+        res.redirect('/doctor_appointment.html');
+    } catch (err) {
+        // Handle any errors that occur during the database query
+        return res.status(500).send('Error completing appointment');
+    }
+});
+
 // Logout route
 router.get('/doctor-logout', (req, res) => {
     // Destroy the session

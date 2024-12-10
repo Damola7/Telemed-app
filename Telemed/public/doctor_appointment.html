@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doctor's Appointments</title>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 8px;
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+
+        button {
+            padding: 5px 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        form {
+            display: inline;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Appointments</h1>
+        <nav>
+            <a href="/doctor_dashboard.html">Back to Dashboard</a>
+        </nav>
+    </header>
+
+    <main>
+        <table>
+            <thead>
+                <tr>
+                    <th>Patient Name</th>
+                    <th>Email</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="appointmentsTable">
+                <!-- Data will be dynamically inserted here -->
+            </tbody>
+        </table>
+    </main>
+
+    <script>
+        // Fetch appointments from the backend
+        async function fetchAppointments() {
+            try {
+                const response = await fetch('/doctor/appointments');
+                const appointments = await response.json();
+
+                const appointmentsTable = document.getElementById('appointmentsTable');
+                appointmentsTable.innerHTML = ''; // Clear existing rows
+
+                // Populate table with data
+                appointments.forEach(appointment => {
+                    const row = document.createElement('tr');
+
+                    row.innerHTML = `
+                        <td>${appointment.first_name} ${appointment.last_name}</td>
+                        <td>${appointment.email}</td>
+                        <td>${appointment.status}</td>
+                        <td>
+                            ${appointment.status === 'Pending' ? `
+                                <form action="/doctor/appointments/confirm/${appointment.id}" method="POST">
+                                    <button type="submit">Confirm</button>
+                                </form>
+                            ` : ''}
+                            ${appointment.status === 'Confirmed' ? `
+                                <form action="/doctor/appointments/complete/${appointment.id}" method="POST">
+                                    <button type="submit">Complete</button>
+                                </form>
+                            ` : 'N/A'}
+                        </td>
+                    `;
+
+                    appointmentsTable.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Error fetching appointments:', error);
+            }
+        }
+
+        // Call fetchAppointments when the page loads
+        window.onload = fetchAppointments;
+    </script>
+</body>
+</html>
