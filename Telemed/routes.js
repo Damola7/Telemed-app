@@ -461,50 +461,40 @@ router.get('/appointments', async (req, res) => {
     }
 });
 
-
 // Admin Registration
-router.post('/admin/register', (req, res) => {
+router.post('/admin/register', async (req, res) => {
     const { username, password } = req.body;
 
-    // Check if the admin already exists
-    connection.query('SELECT * FROM admin WHERE username = ?', [username], (err, results) => {
-        if (err) {
-            return res.status(500).json({ success: false, message: 'Database error' });
-        }
+    try {
+        // Check if the admin already exists
+        const [results] = await connection.query('SELECT * FROM admin WHERE username = ?', [username]);
         if (results.length > 0) {
             return res.status(400).json({ success: false, message: 'Username already taken' });
         }
 
         // Hash the password using bcrypt
-        bcrypt.hash(password, 10, (err, hashedPassword) => {
-            if (err) {
-                return res.status(500).json({ success: false, message: 'Error hashing password' });
-            }
+        const hashedPassword = await bcrypt.hash(password, 10);
 
-            // Insert new admin with hashed password
-            connection.query(
-                'INSERT INTO admin (username, password_hash, role) VALUES (?, ?, ?)',
-                [username, hashedPassword, 'admin'],  // Assuming 'admin' as the default role, adjust if needed
-                (err) => {
-                    if (err) {
-                        return res.status(500).json({ success: false, message: 'Registration failed' });
-                    }
-                    res.status(201).json({ success: true, message: 'Admin registered successfully' });
-                }
-            );
-        });
-    });
+        // Insert new admin with hashed password
+        await connection.query(
+            'INSERT INTO admin (username, password_hash, role) VALUES (?, ?, ?)',
+            [username, hashedPassword, 'admin'] // Assuming 'admin' as the default role
+        );
+
+        res.status(201).json({ success: true, message: 'Admin registered successfully' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, message: 'Registration failed' });
+    }
 });
 
 // Admin Login Route
-router.post('/admin/login', (req, res) => {
+router.post('/admin/login', async (req, res) => {
     const { username, password } = req.body;
 
-    // Check if the admin exists in the database
-    connection.query('SELECT * FROM admin WHERE username = ?', [username], (err, results) => {
-        if (err) {
-            return res.status(500).json({ success: false, message: 'Database error' });
-        }
+    try {
+        // Check if the admin exists in the database
+        const [results] = await connection.query('SELECT * FROM admin WHERE username = ?', [username]);
 
         if (results.length === 0) {
             return res.status(404).json({ success: false, message: 'Invalid username or password' });
@@ -513,22 +503,20 @@ router.post('/admin/login', (req, res) => {
         const admin = results[0];
 
         // Compare the entered password with the hashed password in the database
-        bcrypt.compare(password, admin.password_hash, (err, isMatch) => {
-            if (err) {
-                return res.status(500).json({ success: false, message: 'Error during password comparison' });
-            }
+        const isMatch = await bcrypt.compare(password, admin.password_hash);
 
-            if (!isMatch) {
-                return res.status(400).json({ success: false, message: 'Invalid username or password' });
-            }
+        if (!isMatch) {
+            return res.status(400).json({ success: false, message: 'Invalid username or password' });
+        }
 
-            // Successful login, create a session for the admin
-            req.session.adminId = admin.id; // Store admin ID in session
-            req.session.adminRole = admin.role; // Store admin role if needed
+        // Successful login, create a session for the admin
+        req.session.adminId = admin.id; // Store admin ID in session
 
-            res.json({ success: true, message: 'Login successful' });
-        });
-    });
+        res.json({ success: true, message: 'Login successful' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, message: 'Login failed' });
+    }
 });
 
 // Admin patients route with search functionality
