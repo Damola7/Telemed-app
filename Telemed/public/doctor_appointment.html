@@ -58,46 +58,53 @@
     </main>
 
     <script>
-        // Fetch appointments from the backend
-        async function fetchAppointments() {
-            try {
-                const response = await fetch('/doctor/appointments');
-                const appointments = await response.json();
+            // Fetch appointments from the backend
+            async function fetchAppointments() {
+                try {
+                    const response = await fetch('/doctor/appointments');
+                    const appointments = await response.json();
 
-                const appointmentsTable = document.getElementById('appointmentsTable');
-                appointmentsTable.innerHTML = ''; // Clear existing rows
+                    const appointmentsTable = document.getElementById('appointmentsTable');
+                    appointmentsTable.innerHTML = ''; // Clear existing rows
 
-                // Populate table with data
-                appointments.forEach(appointment => {
-                    const row = document.createElement('tr');
+                    // Populate table with data
+                    appointments.forEach(appointment => {
+                        const row = document.createElement('tr');
 
-                    row.innerHTML = `
-                        <td>${appointment.first_name} ${appointment.last_name}</td>
-                        <td>${appointment.email}</td>
-                        <td>${appointment.status}</td>
-                        <td>
-                            ${appointment.status === 'Pending' ? `
-                                <form action="/doctor/appointments/confirm/${appointment.id}" method="POST">
-                                    <button type="submit">Confirm</button>
-                                </form>
-                            ` : ''}
-                            ${appointment.status === 'Confirmed' ? `
-                                <form action="/doctor/appointments/complete/${appointment.id}" method="POST">
-                                    <button type="submit">Complete</button>
-                                </form>
-                            ` : 'N/A'}
-                        </td>
-                    `;
+                        // Generate action buttons or fallback to "N/A"
+                        let actionsHTML = '';
+                        if (appointment.status === 'Pending') {
+                            actionsHTML = `
+                    <form action="/doctor/appointments/confirm/${appointment.id}" method="POST">
+                        <button type="submit">Confirm</button>
+                    </form>
+                `;
+                        } else if (appointment.status === 'Confirmed') {
+                            actionsHTML = `
+                    <form action="/doctor/appointments/complete/${appointment.id}" method="POST">
+                        <button type="submit">Complete</button>
+                    </form>
+                `;
+                        } else {
+                            actionsHTML = 'N/A'; // No further actions available
+                        }
 
-                    appointmentsTable.appendChild(row);
-                });
-            } catch (error) {
-                console.error('Error fetching appointments:', error);
+                        row.innerHTML = `
+                <td>${appointment.first_name} ${appointment.last_name}</td>
+                <td>${appointment.email}</td>
+                <td>${appointment.status}</td>
+                <td>${actionsHTML}</td>
+            `;
+
+                        appointmentsTable.appendChild(row);
+                    });
+                } catch (error) {
+                    console.error('Error fetching appointments:', error);
+                }
             }
-        }
 
-        // Call fetchAppointments when the page loads
-        window.onload = fetchAppointments;
+            // Call fetchAppointments when the page loads
+            window.onload = fetchAppointments;
     </script>
 </body>
 </html>
