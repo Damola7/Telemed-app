@@ -5,166 +5,249 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        /* Reset */
         body {
-            margin: 0;
             font-family: Arial, sans-serif;
-            background-color: #f4f4f4;
-            color: #333;
+            margin: 0;
+            padding: 0;
         }
 
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+        .dashboard-header {
             background-color: #4CAF50;
+            color: white;
             padding: 10px 20px;
-            color: white;
+            text-align: center;
         }
 
-        .header-right {
-            display: flex;
-            align-items: center;
-            gap: 10px;
+        .dashboard-header h1 {
+            margin: 0;
         }
 
-        #logoutButton {
-            padding: 5px 10px;
-            background-color: #d9534f;
-            border: none;
-            color: white;
-            cursor: pointer;
-            border-radius: 4px;
+        .dashboard-nav {
+            background-color: #333;
+            padding: 10px;
         }
 
-        .stats {
+        .dashboard-nav ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
             display: flex;
             justify-content: space-around;
-            margin: 20px 10px;
         }
 
-        .stat-card {
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            text-align: center;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        .dashboard-nav li {
+            margin: 0 5px;
         }
 
-        .stat-card h3 {
-            margin: 0;
-            color: #4CAF50;
+        .dashboard-nav a,
+        .dashboard-nav button {
+            color: white;
+            text-decoration: none;
+            background: none;
+            border: none;
+            cursor: pointer;
         }
 
-        .stat-card p {
-            font-size: 2rem;
-            margin: 5px 0;
+        .dashboard-nav a:hover,
+        .dashboard-nav button:hover {
+            text-decoration: underline;
         }
 
-        .charts {
-            margin: 20px;
-            background: white;
+        .card {
+            background-color: #f9f9f9;
             padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            margin: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            display: inline-block;
+            width: 30%;
+            text-align: center;
+        }
+
+        main table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        main table th,
+        main table td {
+            padding: 10px;
+            border: 1px solid #ddd;
+            text-align: left;
         }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body>
-    <header class="header">
-        <h1>Admin Dashboard</h1>
-        <div class="header-right">
-            <span id="adminName">Welcome, Admin</span>
-            <a href="/adminlogout"><button id="logoutButton">Logout</button></a>
-        </div>
+    <!-- Header Section -->
+    <header class="dashboard-header">
+        <h1>Welcome, <span id="adminUsername">Admin</span>!</h1>
+        <p id="currentDateTime"></p>
+        <button onclick="logout()">Logout</button>
     </header>
 
+    <!-- Navigation Menu -->
+    <nav class="dashboard-nav">
+        <ul>
+            <li><a href="#metrics">Metrics Overview</a></li>
+            <li><a href="#patientsTable">Manage Patients</a></li>
+            <li><a href="#doctorsTable">Manage Doctors</a></li>
+            <li><a href="#appointmentsTable">Appointments</a></li>
+            <li><a href="#analytics">Analytics</a></li>
+            <li><a href="#settings">Profile Settings</a></li>
+            <li><button onclick="logout()">Logout</button></li>
+        </ul>
+    </nav>
+
+    <!-- Main Content -->
     <main>
-        <section class="stats">
-            <div class="stat-card">
-                <h3>Total Patients</h3>
+        <!-- Metrics Overview -->
+        <section id="metrics">
+            <div class="card" id="totalPatientsCard">
+                <h2>Total Patients</h2>
                 <p id="totalPatients">0</p>
             </div>
-            <div class="stat-card">
-                <h3>Total Doctors</h3>
+            <div class="card" id="totalDoctorsCard">
+                <h2>Total Doctors</h2>
                 <p id="totalDoctors">0</p>
             </div>
-            <div class="stat-card">
-                <h3>Appointments Today</h3>
-                <p id="appointmentsToday">0</p>
+            <div class="card" id="totalAppointmentsCard">
+                <h2>Total Appointments</h2>
+                <p>Pending: <span id="pendingAppointments">0</span></p>
+                <p>Confirmed: <span id="confirmedAppointments">0</span></p>
+                <p>Completed: <span id="completedAppointments">0</span></p>
             </div>
         </section>
 
-        <section class="charts">
+        <!-- Data Tables -->
+        <section id="patientsTable">
+            <h2>Patients</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Registration Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="patientsBody">
+                    <!-- Dynamic rows -->
+                </tbody>
+            </table>
+        </section>
+
+        <section id="doctorsTable">
+            <h2>Doctors</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Specialization</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="doctorsBody">
+                    <!-- Dynamic rows -->
+                </tbody>
+            </table>
+        </section>
+
+        <section id="appointmentsTable">
+            <h2>Appointments</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Patient Name</th>
+                        <th>Doctor Name</th>
+                        <th>Status</th>
+                        <th>Scheduled Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="appointmentsBody">
+                    <!-- Dynamic rows -->
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Analytics -->
+        <section id="analytics">
             <h2>Analytics</h2>
-            <canvas id="appointmentsChart" width="400" height="200"></canvas>
+            <canvas id="appointmentsChart"></canvas>
         </section>
     </main>
 
     <script>
-        // Fetch stats and analytics data from the backend
         async function fetchDashboardData() {
             try {
-                // Fetch data from the backend endpoint
                 const response = await fetch('/admin/dashboard-data');
                 const data = await response.json();
 
-                // Check if the response is successful
-                if (!data.success) {
-                    throw new Error('Failed to fetch dashboard data');
-                }
+                if (!data.success) throw new Error('Failed to load data');
 
-                // Populate stats and analytics
-                updateStats(data.stats);
-                renderAppointmentsChart(data.analytics);
-            } catch (error) {
-                console.error('Error fetching dashboard data:', error);
-                alert('Unable to load dashboard data.');
+                // Populate Metrics
+                document.getElementById('totalPatients').textContent = data.metrics.totalPatients;
+                document.getElementById('totalDoctors').textContent = data.metrics.totalDoctors;
+                document.getElementById('pendingAppointments').textContent = data.metrics.pendingAppointments;
+                document.getElementById('confirmedAppointments').textContent = data.metrics.confirmedAppointments;
+                document.getElementById('completedAppointments').textContent = data.metrics.completedAppointments;
+
+                // Populate Patients Table
+                populateTable('patientsBody', data.patients, ['name', 'email', 'phone', 'registration_date', 'actions']);
+
+                // Populate Doctors Table
+                populateTable('doctorsBody', data.doctors, ['name', 'specialization', 'email', 'phone', 'status', 'actions']);
+
+                // Populate Appointments Table
+                populateTable('appointmentsBody', data.appointments, ['patient_name', 'doctor_name', 'status', 'scheduled_date', 'actions']);
+
+                // Render Analytics
+                renderChart(data.analytics);
+            } catch (err) {
+                console.error(err);
             }
         }
 
-        // Update stats dynamically
-        function updateStats(stats) {
-            document.getElementById('totalPatients').textContent = stats.totalPatients;
-            document.getElementById('totalDoctors').textContent = stats.totalDoctors;
-            document.getElementById('appointmentsToday').textContent = stats.appointmentsToday;
+        function populateTable(tableId, data, columns) {
+            const tbody = document.getElementById(tableId);
+            tbody.innerHTML = '';
+            data.forEach(row => {
+                const tr = document.createElement('tr');
+                columns.forEach(col => {
+                    const td = document.createElement('td');
+                    td.textContent = row[col] || '-';
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            });
         }
 
-        // Render Chart.js chart with dynamic data
-        function renderAppointmentsChart(analytics) {
+        function renderChart(analytics) {
             const ctx = document.getElementById('appointmentsChart').getContext('2d');
             new Chart(ctx, {
-                type: 'line',
+                type: 'bar',
                 data: {
-                    labels: analytics.labels, // Days of the week
+                    labels: analytics.labels,
                     datasets: [{
-                        label: 'Appointments per Day',
-                        data: analytics.data, // Dynamic data
-                        borderColor: '#4CAF50',
-                        borderWidth: 2,
-                        fill: false,
+                        label: 'Appointments',
+                        data: analytics.data,
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1,
                     }],
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: {
-                            display: true,
-                            position: 'top',
-                        },
-                    },
                 },
             });
         }
 
-        // Initialize the dashboard
-        window.onload = function () {
-            fetchDashboardData(); // Fetch data when the page loads
-        };
-
+        window.onload = fetchDashboardData;
     </script>
 </body>
 

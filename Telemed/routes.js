@@ -519,45 +519,127 @@ router.post('/admin/login', async (req, res) => {
     }
 });
 
-// Admin Dashboard Data
+// // Admin Dashboard Data
+// router.get('/admin/dashboard-data', async (req, res) => {
+//     try {
+//         // Fetch stats from the database
+//         const [[{ totalPatients }]] = await connection.query('SELECT COUNT(*) AS totalPatients FROM patients');
+//         const [[{ totalDoctors }]] = await connection.query('SELECT COUNT(*) AS totalDoctors FROM doctors');
+//         const [[{ appointmentsToday }]] = await connection.query(`
+//             SELECT COUNT(*) AS appointmentsToday 
+//             FROM appointments 
+//             WHERE DATE(created_at) = CURDATE()
+//         `);
+
+//         // Fetch analytics data (e.g., appointments per day)
+//         const [analytics] = await connection.query(`
+//             SELECT DAYNAME(created_at) AS day, COUNT(*) AS total
+//             FROM appointments
+//             WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+//             GROUP BY DAYNAME(created_at)
+//         `);
+
+//         // Format analytics data
+//         const labels = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+//         const data = labels.map(day => {
+//             const record = analytics.find(a => a.day === day);
+//             return record ? record.total : 0;
+//         });
+
+//         // Send response
+//         res.json({
+//             success: true,
+//             stats: {
+//                 totalPatients,
+//                 totalDoctors,
+//                 appointmentsToday,
+//             },
+//             analytics: {
+//                 labels,
+//                 data,
+//             },
+//         });
+//     } catch (err) {
+//         console.error('Error fetching dashboard data:', err);
+//         res.status(500).json({ success: false, message: 'Failed to fetch dashboard data' });
+//     }
+// });
 router.get('/admin/dashboard-data', async (req, res) => {
     try {
-        // Fetch stats from the database
-        const [[{ totalPatients }]] = await connection.query('SELECT COUNT(*) AS totalPatients FROM patients');
-        const [[{ totalDoctors }]] = await connection.query('SELECT COUNT(*) AS totalDoctors FROM doctors');
-        const [[{ appointmentsToday }]] = await connection.query(`
-            SELECT COUNT(*) AS appointmentsToday 
-            FROM appointments 
-            WHERE DATE(created_at) = CURDATE()
-        `);
+        // Ensure admin is logged in (optional middleware logic can be applied)
+        if (!req.session.adminId) {
+            return res.status(403).json({ success: false, message: 'Unauthorized' });
+        }
 
-        // Fetch analytics data (e.g., appointments per day)
-        const [analytics] = await connection.query(`
-            SELECT DAYNAME(created_at) AS day, COUNT(*) AS total
+        // Fetch metrics
+        const [totalPatients] = await connection.query('SELECT COUNT(*) AS count FROM patients');
+        const [totalDoctors] = await connection.query('SELECT COUNT(*) AS count FROM doctors');
+        const [appointmentStats] = await connection.query(`
+            SELECT 
+                SUM(status = 'Pending') AS pending,
+                SUM(status = 'Confirmed') AS confirmed,
+                SUM(status = 'Completed') AS completed
             FROM appointments
-            WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
-            GROUP BY DAYNAME(created_at)
         `);
 
-        // Format analytics data
-        const labels = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-        const data = labels.map(day => {
-            const record = analytics.find(a => a.day === day);
-            return record ? record.total : 0;
-        });
+        // Fetch tables data
+        const [patients] = await connection.query(`
+            SELECT 
+                CONCAT(first_name, ' ', last_name) AS name, 
+                email, 
+                phone, 
+                DATE_FORMAT(created_at, '%Y-%m-%d') AS registration_date 
+            FROM patients
+        `);
+
+        const [doctors] = await connection.query(`
+            SELECT 
+                CONCAT(first_name, ' ', last_name) AS name, 
+                specialization, 
+                email, 
+                phone, 
+                CASE WHEN status = 1 THEN 'Active' ELSE 'Inactive' END AS status 
+            FROM doctors
+        `);
+
+        const [appointments] = await connection.query(`
+            SELECT 
+                (SELECT CONCAT(first_name, ' ', last_name) FROM patients WHERE patients.id = appointments.patient_id) AS patient_name,
+                (SELECT CONCAT(first_name, ' ', last_name) FROM doctors WHERE doctors.id = appointments.doctor_id) AS doctor_name,
+                status,
+                DATE_FORMAT(schedule_id, '%Y-%m-%d %H:%i') AS scheduled_date
+            FROM appointments
+        `);
+
+        // Fetch analytics data
+        const [appointmentsOverTime] = await connection.query(`
+            SELECT 
+                DATE(created_at) AS date, 
+                COUNT(*) AS count 
+            FROM appointments 
+            GROUP BY DATE(created_at) 
+            ORDER BY date ASC
+        `);
+
+        const analytics = {
+            labels: appointmentsOverTime.map(row => row.date),
+            data: appointmentsOverTime.map(row => row.count),
+        };
 
         // Send response
         res.json({
             success: true,
-            stats: {
-                totalPatients,
-                totalDoctors,
-                appointmentsToday,
+            metrics: {
+                totalPatients: totalPatients[0].count,
+                totalDoctors: totalDoctors[0].count,
+                pendingAppointments: appointmentStats[0].pending || 0,
+                confirmedAppointments: appointmentStats[0].confirmed || 0,
+                completedAppointments: appointmentStats[0].completed || 0,
             },
-            analytics: {
-                labels,
-                data,
-            },
+            patients,
+            doctors,
+            appointments,
+            analytics,
         });
     } catch (err) {
         console.error('Error fetching dashboard data:', err);
