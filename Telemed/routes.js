@@ -519,6 +519,53 @@ router.post('/admin/login', async (req, res) => {
     }
 });
 
+// Admin Dashboard Data
+router.get('/admin/dashboard-data', async (req, res) => {
+    try {
+        // Fetch stats from the database
+        const [[{ totalPatients }]] = await connection.query('SELECT COUNT(*) AS totalPatients FROM patients');
+        const [[{ totalDoctors }]] = await connection.query('SELECT COUNT(*) AS totalDoctors FROM doctors');
+        const [[{ appointmentsToday }]] = await connection.query(`
+            SELECT COUNT(*) AS appointmentsToday 
+            FROM appointments 
+            WHERE DATE(created_at) = CURDATE()
+        `);
+
+        // Fetch analytics data (e.g., appointments per day)
+        const [analytics] = await connection.query(`
+            SELECT DAYNAME(created_at) AS day, COUNT(*) AS total
+            FROM appointments
+            WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+            GROUP BY DAYNAME(created_at)
+        `);
+
+        // Format analytics data
+        const labels = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        const data = labels.map(day => {
+            const record = analytics.find(a => a.day === day);
+            return record ? record.total : 0;
+        });
+
+        // Send response
+        res.json({
+            success: true,
+            stats: {
+                totalPatients,
+                totalDoctors,
+                appointmentsToday,
+            },
+            analytics: {
+                labels,
+                data,
+            },
+        });
+    } catch (err) {
+        console.error('Error fetching dashboard data:', err);
+        res.status(500).json({ success: false, message: 'Failed to fetch dashboard data' });
+    }
+});
+
+
 // Admin patients route with search functionality
 router.get('/adpatients', (req, res) => {
 
@@ -548,7 +595,7 @@ router.get('/adminlogout', (req, res) => {
         }
 
         // Redirect to login page after successful logout
-        res.redirect('/login-admin.html');
+        res.redirect('/admin_login.html');
     });
 });
 

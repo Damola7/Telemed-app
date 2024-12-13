@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Reset */
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #4CAF50;
+            padding: 10px 20px;
+            color: white;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #logoutButton {
+            padding: 5px 10px;
+            background-color: #d9534f;
+            border: none;
+            color: white;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 10px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-card h3 {
+            margin: 0;
+            color: #4CAF50;
+        }
+
+        .stat-card p {
+            font-size: 2rem;
+            margin: 5px 0;
+        }
+
+        .charts {
+            margin: 20px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+
+<body>
+    <header class="header">
+        <h1>Admin Dashboard</h1>
+        <div class="header-right">
+            <span id="adminName">Welcome, Admin</span>
+            <a href="/adminlogout"><button id="logoutButton">Logout</button></a>
+        </div>
+    </header>
+
+    <main>
+        <section class="stats">
+            <div class="stat-card">
+                <h3>Total Patients</h3>
+                <p id="totalPatients">0</p>
+            </div>
+            <div class="stat-card">
+                <h3>Total Doctors</h3>
+                <p id="totalDoctors">0</p>
+            </div>
+            <div class="stat-card">
+                <h3>Appointments Today</h3>
+                <p id="appointmentsToday">0</p>
+            </div>
+        </section>
+
+        <section class="charts">
+            <h2>Analytics</h2>
+            <canvas id="appointmentsChart" width="400" height="200"></canvas>
+        </section>
+    </main>
+
+    <script>
+        // Fetch stats and analytics data from the backend
+        async function fetchDashboardData() {
+            try {
+                // Fetch data from the backend endpoint
+                const response = await fetch('/admin/dashboard-data');
+                const data = await response.json();
+
+                // Check if the response is successful
+                if (!data.success) {
+                    throw new Error('Failed to fetch dashboard data');
+                }
+
+                // Populate stats and analytics
+                updateStats(data.stats);
+                renderAppointmentsChart(data.analytics);
+            } catch (error) {
+                console.error('Error fetching dashboard data:', error);
+                alert('Unable to load dashboard data.');
+            }
+        }
+
+        // Update stats dynamically
+        function updateStats(stats) {
+            document.getElementById('totalPatients').textContent = stats.totalPatients;
+            document.getElementById('totalDoctors').textContent = stats.totalDoctors;
+            document.getElementById('appointmentsToday').textContent = stats.appointmentsToday;
+        }
+
+        // Render Chart.js chart with dynamic data
+        function renderAppointmentsChart(analytics) {
+            const ctx = document.getElementById('appointmentsChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: analytics.labels, // Days of the week
+                    datasets: [{
+                        label: 'Appointments per Day',
+                        data: analytics.data, // Dynamic data
+                        borderColor: '#4CAF50',
+                        borderWidth: 2,
+                        fill: false,
+                    }],
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                        },
+                    },
+                },
+            });
+        }
+
+        // Initialize the dashboard
+        window.onload = function () {
+            fetchDashboardData(); // Fetch data when the page loads
+        };
+
+    </script>
+</body>
+
+</html>
