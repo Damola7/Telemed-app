@@ -597,8 +597,7 @@ router.get('/admin/dashboard-data', async (req, res) => {
                 CONCAT(first_name, ' ', last_name) AS name, 
                 specialization, 
                 email, 
-                phone, 
-                CASE WHEN status = 1 THEN 'Active' ELSE 'Inactive' END AS status 
+                phone 
             FROM doctors
         `);
 

@@ -86,7 +86,7 @@
     <header class="dashboard-header">
         <h1>Welcome, <span id="adminUsername">Admin</span>!</h1>
         <p id="currentDateTime"></p>
-        <button onclick="logout()">Logout</button>
+        <a href="/admin_logout"><button>Logout</button></a>
     </header>
 
     <!-- Navigation Menu -->
@@ -98,7 +98,7 @@
             <li><a href="#appointmentsTable">Appointments</a></li>
             <li><a href="#analytics">Analytics</a></li>
             <li><a href="#settings">Profile Settings</a></li>
-            <li><button onclick="logout()">Logout</button></li>
+            <li><a href="/admin_logout"><button>Logout</button></a></li>
         </ul>
     </nav>
 
@@ -186,6 +186,27 @@
     </main>
 
     <script>
+        // async function logout() {
+        //     try {
+        //         const response = await fetch('/adminlogout', {
+        //             method: 'POST',
+        //             headers: {
+        //                 'Content-Type': 'application/json',
+        //             },
+        //         });
+
+        //         if (response.ok) {
+        //             // Redirect to the login page or a confirmation page
+        //             window.location.href = '/admin_login.html';
+        //         } else {
+        //             console.error('Failed to logout');
+        //             alert('Logout failed. Please try again.');
+        //         }
+        //     } catch (error) {
+        //         console.error('Error during logout:', error);
+        //         alert('An error occurred during logout.');
+        //     }
+        // }
         async function fetchDashboardData() {
             try {
                 const response = await fetch('/admin/dashboard-data');
